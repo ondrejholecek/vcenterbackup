@@ -1,0 +1,100 @@
+<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+<xs:simpleType name="config_version">
+	<xs:restriction base="xs:int">
+		<xs:minInclusive value = "1"/>
+		<xs:maxInclusive value = "1"/>
+	</xs:restriction>
+</xs:simpleType>
+
+<xs:simpleType name="vmname_type">
+	<xs:restriction base="xs:string">
+		<xs:enumeration value="name"/>
+		<xs:enumeration value="regex"/>
+	</xs:restriction>
+</xs:simpleType>
+
+<xs:simpleType name="replacedisks_type">
+	<xs:restriction base="xs:string">
+		<xs:pattern value="(\d+)(,(\d+))*"/>
+	</xs:restriction>
+</xs:simpleType>
+
+
+<xs:attributeGroup name="default_properties"> 
+	<xs:attribute name="delete_old_snapshots" type="xs:string" use="optional"/>
+	<xs:attribute name="full_backup" type="xs:boolean" use="optional"/>
+	<xs:attribute name="only_running" type="xs:boolean" use="optional"/>
+</xs:attributeGroup>
+
+<xs:attributeGroup name="all_properties"> 
+	<xs:attribute name="delete_old_snapshots" type="xs:string" use="optional"/>
+	<xs:attribute name="full_backup" type="xs:boolean" use="optional"/>
+	<xs:attribute name="only_running" type="xs:boolean" use="optional"/>
+	<xs:attribute name="type" type="vmname_type" use="optional"/>
+	<xs:attribute name="replace_disks" type="replacedisks_type" use="optional"/>
+</xs:attributeGroup>
+
+<xs:element name="vcenterbackup">
+	<xs:complexType>
+		<xs:all>
+			<xs:element name="vcenter">
+				<xs:complexType>
+					<xs:all>
+						<xs:element name="host" type="xs:string"/>
+						<xs:element name="user" type="xs:string"/>
+						<xs:element name="password" type="xs:string"/>
+						<xs:element name="ignore_certificate" type="xs:boolean"/>
+			
+						<xs:element name="backup_folder" type="xs:string"/>
+						<xs:element name="backup_datastore" type="xs:string"/>
+					</xs:all>
+				</xs:complexType>
+			</xs:element>
+
+			<xs:element name="local">
+				<xs:complexType>
+					<xs:all>
+						<xs:element name="nfs_directory" type="xs:string"/>
+						<xs:element name="compressed_vm_directory" type="xs:string"/>
+						<xs:element name="compress_command" type="xs:string"/>
+					</xs:all>
+				</xs:complexType>
+			</xs:element>
+
+			<xs:element name="backup">
+				<xs:complexType>
+					<xs:choice minOccurs="0" maxOccurs="unbounded">
+						<xs:element name="vm">
+							<xs:complexType>
+								<xs:simpleContent>
+									<xs:extension base="xs:string">
+										<xs:attributeGroup ref="all_properties"/>
+									</xs:extension>
+								</xs:simpleContent>
+							</xs:complexType>
+						</xs:element>
+
+						<xs:element name="host">
+							<xs:complexType>
+								<xs:simpleContent>
+									<xs:extension base="xs:string">
+										<xs:attributeGroup ref="all_properties"/>
+									</xs:extension>
+								</xs:simpleContent>
+							</xs:complexType>
+						</xs:element>
+
+					</xs:choice>
+					<xs:attributeGroup ref="default_properties"/>
+				</xs:complexType>
+			</xs:element>
+
+		</xs:all>
+		<xs:attribute name="version" type="config_version" use="required"/>
+	</xs:complexType>
+</xs:element>
+
+</xs:schema>
+

@@ -1,0 +1,104 @@
+<vcenterbackup version="1">
+	<vcenter>
+		<!-- The vCenter connection settings.
+		     Backup user must have following global privileges:
+			  - Sessions >> Validate session
+			  - Virtual Machine >> Inventory >> Unregister
+			  - Virtual Machine >> Provisioning >> Clone virtual machine
+			  - Virtual Machine >> Snapshot management >> Create snapshot
+			  - Virtual Machine >> Snapshot management >> Remove snapshot
+		-->
+		<host>vcenter.example.com</host>
+		<user>backup@example.com</user>
+		<password>somepassword</password>
+
+		<!-- Do not validate SSL certificate. -->
+		<ignore_certificate>true</ignore_certificate>
+
+		<!-- Folder name in vCenter where the VM will be cloned during the backup.
+		     Required privileges to the backup user on the backup folder: 
+			  - Virtual Machine >> Configuration >> Add new disk
+			  - Virtual Machine >> Configuration >> Add or remove device
+			  - Virtual Machine >> Configuration >> Modify device settings
+			  - Virtual Machine >> Configuration >> Remove disk
+			  - Virtual Machine >> Inventory >> Create from existing
+		-->
+		<backup_folder>Backups</backup_folder>
+
+		<!-- Name of the datastore in vCenter where the VM will be cloned during the backup.
+		     WARNING: This datastore must be reachable and mounted on each ESXi where the
+			           VM that is about to be backuped is running.
+			           The the DS is not connected on ESXi, the full VM backup will be skipped.
+		     Required privileges to the backup user on the backup datastore: 
+			  - Datastore >> Allocate space
+		-->
+		<backup_datastore>backup</backup_datastore>
+	</vcenter>
+
+	<local>
+		<!-- Local directory which is exported via NFS and mounted on ESXi hosts
+		     as <backup_datastore>.
+		-->
+		<nfs_directory>/backups/external</nfs_directory>
+
+		<!-- Local directory where compressed VMs are to be saved -->
+		<compressed_vm_directory>/backups/VMs</compressed_vm_directory>
+
+		<!-- Command that is supposed to take the directory with all the VM files and 
+		     compress it to single file in <compressed_vm_directory>.
+			  Variable as specified as ${...} and following are known:
+			  - ${vm}     : Directory with all the VM files, example "Router1_2019-04-03_16_50_23"
+			  - ${nfs}    : Parent directory where the ${vm} is sitting on, example "/backups/external"
+			  - ${backup} : Directory where the output compressed file should end up, example '/backups/VMs"
+		-->
+		<compress_command>/bin/tar -cf - -C ${nfs} --sparse ${vm} | /usr/bin/zstd >${backup}/.${vm}.tar.zst &amp;&amp; /bin/mv ${backup}/.${vm}.tar.zst ${backup}/${vm}.tar.zst</compress_command>
+	</local>
+
+	<!-- Specifies which VMs are to be backuped and how. Supported sub-elements are:
+	     - <vm>   : Single VM, does not matter on which ESXi host it is running
+		  - <host> : All VMs on the specified ESXi hosts
+		  ... both can be entered in any order but the first match wins.
+
+		  Attributes are used to modify the behavior, following can be specified either
+		  on sub-element or on the <backup> element. If sub-element does not have the 
+		  attribute defined, the value is used from <backup> element. If that does not
+		  have it defined the hardcoded default value is used:
+	     - "delete_old_snapshots"  : 
+		       If specified the utility will delete (only) our snapshots older than
+				 this time. Our snapshots and time are recognized by the snapshot name.
+				 Value is in seconds, but the number can end with 's' or 'm' or 'h' or
+				 'd' to specify seconds, minutes, hours or days.
+
+				 By default it is empty which means that no snapshots are deleted.
+	     - "full_backup"  :
+		       Do full backup for this VM. Boolean value - can be "true" or "false".
+				 If not speficied it is "true".
+	     - "only_running"  :
+		       Only backup VMs that are running. Boolean value - can be "true" or "false".
+				 If not speficied it is "false".
+
+	     Following additional attributes can be defined on <vm> or <host> sub-elements,
+		  but not on <backup> element.
+		  - "replace_disks"  :
+		       Coma separated disk positions, starting from 0, no space allowed.
+				 The disk(s) matching the position(s) will not be copied and a new empty
+				 virtual disk of the same size will be created and backuped instead.
+				 Useful for saving space and not backuping datadisks which content is not
+				 so important and that can be easily formated, attached and filled again.
+		  - "type"  :
+		       How the <vm> is localed by the name. Possible values are "name" or "regex".
+				 By default it is "name" which means that the exact name must be specified.
+				 If "regex" is used, the tag text is treated as regular expression. Usable
+				 when we don't know the full VM name in advance.
+				 Similar meaning for <host> sub-element.
+	-->
+	<backup delete_old_snapshots="1s" full_backup="true" only_running="true">
+		<vm full_backup="false" type='regex' only_running="false">^camille-esx10 \[oholecek\]</vm>
+		<vm full_backup="false" type='regex' only_running="false">^rimmer-esx16 \[oholecek\]</vm>
+
+		<vm replace_disks="1">Log server</vm>
+		<vm replace_disks="1">Labsetup</vm>
+
+		<host only_running="true">infra.example.com</host>
+	</backup>
+</vcenterbackup>
