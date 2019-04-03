@@ -517,7 +517,7 @@ class vCB:
 			#
 			if self.do_snapshots:
 				# Create current snapshot
-				snapname = datename + datetime.now().strftime("_%Y-%m-%d_%H:%M:%S")
+				snapname = "backup_" + datename
 				try:
 					result = self.create_current_snapshot(vm, snapname)
 				except MyError, e:
